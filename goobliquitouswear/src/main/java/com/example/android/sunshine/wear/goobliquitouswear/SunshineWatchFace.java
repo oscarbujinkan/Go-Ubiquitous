@@ -31,12 +31,30 @@ import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wearable.DataEvent;
+import com.google.android.gms.wearable.DataEventBuffer;
+import com.google.android.gms.wearable.DataItem;
+import com.google.android.gms.wearable.DataMap;
+import com.google.android.gms.wearable.DataMapItem;
+import com.google.android.gms.wearable.MessageApi;
+import com.google.android.gms.wearable.MessageEvent;
+import com.google.android.gms.wearable.Node;
+import com.google.android.gms.wearable.NodeApi;
+import com.google.android.gms.wearable.Wearable;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -51,6 +69,7 @@ import java.util.concurrent.TimeUnit;
 public class SunshineWatchFace extends CanvasWatchFaceService {
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
+    public static final String START_ACTIVITY_PATH = "/forecast-wear";
 
     /**
      * Update rate in milliseconds for interactive mode. We update once a second since seconds are
@@ -88,7 +107,9 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         }
     }
 
-    private class Engine extends CanvasWatchFaceService.Engine {
+
+    private class Engine extends CanvasWatchFaceService.Engine implements MessageApi.MessageListener,
+            GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         private boolean mRegisteredTimeZoneReceiver = false;
         private Paint mBackgroundPaint;
@@ -124,6 +145,8 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
          * disable anti-aliasing in ambient mode.
          */
         boolean mLowBitAmbient;
+        private GoogleApiClient mGoogleApiClient;
+
 
         @Override
         public void onCreate(SurfaceHolder holder) {
@@ -151,12 +174,13 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mAlphaTempPaint = createTextPaint(resources.getColor(R.color.digital_alpha_text));
             mAlphaTempImagePaint= new Paint();
             mAlphaTempImagePaint= createTextPaint(resources.getColor(R.color.digital_alpha_text));
-            mWatchBitmap=  BitmapFactory.decodeResource(getResources(), R.drawable.art_clear);
-            mWatchBitmap=Bitmap.createScaledBitmap(mWatchBitmap, 120, 120, false);
-            mWatchMaxTemp="25º";
-            mWatchMinTemp="16º";
-            mWatchTemp=mWatchMaxTemp+" "+mWatchMinTemp;
             mCalendar = Calendar.getInstance();
+            mGoogleApiClient = new GoogleApiClient.Builder(SunshineWatchFace.this)
+                    .addConnectionCallbacks(this)
+                    .addOnConnectionFailedListener(this)
+                    .addApi(Wearable.API)
+                    .build();
+
         }
 
         @Override
@@ -227,7 +251,9 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
             mTextPaint.setTextSize(textSize);
             mAlphaTextPaint.setTextSize(textDateSize);
-            mAlphaTempPaint.setTextSize(textSize);
+            mAlphaTempPaint.setTextSize(textDateSize);
+
+
         }
 
         @Override
@@ -295,10 +321,27 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             mCalendar.setTimeInMillis(System.currentTimeMillis());
             mWatchDate = new SimpleDateFormat("EE, LLL dd yyyy").format(Calendar.getInstance().getTime());
             mWatchHour=String.format("%d:%02d", mCalendar.get(Calendar.HOUR_OF_DAY), mCalendar.get(Calendar.MINUTE));
-            canvas.drawText(mWatchHour, bounds.centerX() - (mTextPaint.measureText(mWatchHour)/2), mYOffset, mTextPaint);
-            canvas.drawText( mWatchDate, bounds.centerX() - (mAlphaTextPaint.measureText(mWatchDate))/2, mYDateOffset, mAlphaTextPaint);
-            canvas.drawText(mWatchTemp , bounds.centerX() - (mAlphaTempPaint.measureText(mWatchTemp))/2, mYTempOffset, mAlphaTempPaint);
-            canvas.drawBitmap(mWatchBitmap,bounds.centerX() - (mAlphaTempPaint.measureText(mWatchTemp))/2, mYTempOffset,mAlphaTempImagePaint);
+
+            float centerX=bounds.centerX();
+            float centerY=bounds.centerY();
+            float halfhourX=mTextPaint.measureText(mWatchHour)/2f;
+            float halfDateX=mAlphaTextPaint.measureText(mWatchDate)/2f;
+            float offsetHourY=mTextPaint.getTextSize();
+            float offsetDateY=mAlphaTextPaint.getTextSize();
+            float halfTempX=0;
+            float offsetTempY=0;
+
+            if(mWatchTemp!=null) {
+                halfTempX= mAlphaTempPaint.measureText(mWatchTemp) / 2f;
+                offsetTempY=mAlphaTempPaint.getTextSize()/2f;
+                canvas.drawText(mWatchTemp , mWatchBitmap.getWidth()/2+centerX - halfTempX, centerY+offsetHourY/2+offsetDateY+mWatchBitmap.getHeight()/2, mAlphaTempPaint);
+                canvas.drawBitmap(mWatchBitmap, centerX- mWatchBitmap.getWidth()/2 - halfTempX, centerY+offsetHourY/2+offsetDateY-offsetTempY,mAlphaTempImagePaint);
+            }
+            canvas.drawText(mWatchHour, centerX - halfhourX, centerY-offsetHourY/2-offsetTempY, mTextPaint);
+            canvas.drawText( mWatchDate, centerX - halfDateX, centerY+offsetHourY/2-offsetTempY, mAlphaTextPaint);
+
+
+
 
         }
 
@@ -334,5 +377,94 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
             }
         }
 
+
+        public int getArtResourceForWeatherCondition(int weatherId) {
+            // Based on weather code data found at:
+            // http://bugs.openweathermap.org/projects/api/wiki/Weather_Condition_Codes
+            if (weatherId >= 200 && weatherId <= 232) {
+                return R.drawable.art_storm;
+            } else if (weatherId >= 300 && weatherId <= 321) {
+                return R.drawable.art_light_rain;
+            } else if (weatherId >= 500 && weatherId <= 504) {
+                return R.drawable.art_rain;
+            } else if (weatherId == 511) {
+                return R.drawable.art_snow;
+            } else if (weatherId >= 520 && weatherId <= 531) {
+                return R.drawable.art_rain;
+            } else if (weatherId >= 600 && weatherId <= 622) {
+                return R.drawable.art_snow;
+            } else if (weatherId >= 701 && weatherId <= 761) {
+                return R.drawable.art_fog;
+            } else if (weatherId == 761 || weatherId == 781) {
+                return R.drawable.art_storm;
+            } else if (weatherId == 800) {
+                return R.drawable.art_clear;
+            } else if (weatherId == 801) {
+                return R.drawable.art_light_clouds;
+            } else if (weatherId >= 802 && weatherId <= 804) {
+                return R.drawable.art_clouds;
+            }
+            return -1;
+        }
+
+
+        @Override
+        public void onConnected(@Nullable Bundle bundle) {
+            if(mGoogleApiClient.isConnected()) {
+                new Thread(){
+                    @Override
+                    public void run() {
+                        NodeApi.GetConnectedNodesResult nodesList =
+                                Wearable.NodeApi.getConnectedNodes(mGoogleApiClient).await();
+
+                        for(Node node : nodesList.getNodes()){
+                            Wearable.MessageApi.sendMessage(
+                                    mGoogleApiClient,
+                                    node.getId(),
+                                    START_ACTIVITY_PATH,"ready".getBytes()
+                                    ).await();
+                        }
+                    }
+                }.start();
+            }
+        }
+
+        @Override
+        public void onConnectionSuspended(int i) {
+
+        }
+
+        @Override
+        public void onMessageReceived(MessageEvent messageEvent) {
+            if(messageEvent.getPath().equals(START_ACTIVITY_PATH)){
+                try {
+                    byte[][] data = (byte[][]) deserialize(messageEvent.getData());
+                    mWatchMinTemp=new String(data[1]);
+                    mWatchMaxTemp=new String(data[0]);
+                    mWatchTemp=new String(data[2]);
+                    int resid=getArtResourceForWeatherCondition(Integer.getInteger(new String(data[2])));
+                    mWatchBitmap=  BitmapFactory.decodeResource(getResources(), resid);
+                    mWatchBitmap=Bitmap.createScaledBitmap(mWatchBitmap, (int) mTextPaint.getTextSize(), (int)mTextPaint.getTextSize(), false);
+                    mWatchTemp=mWatchMaxTemp+" "+mWatchMinTemp;
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+
+        @Override
+        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+
+        }
+        public Object deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
+            ByteArrayInputStream b = new ByteArrayInputStream(bytes);
+            ObjectInputStream o = new ObjectInputStream(b);
+            return o.readObject();
+        }
     }
+
 }
