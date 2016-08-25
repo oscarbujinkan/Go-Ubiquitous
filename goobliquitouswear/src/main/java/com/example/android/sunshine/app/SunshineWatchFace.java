@@ -340,6 +340,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                 canvas.drawText(mWatchTemp , mWatchBitmap.getWidth()/2+centerX - halfTempX, centerY+offsetHourY/2+offsetDateY+mWatchBitmap.getHeight()/2, mAlphaTempPaint);
                 canvas.drawBitmap(mWatchBitmap, centerX- mWatchBitmap.getWidth()/2 - halfTempX, centerY+offsetHourY/2+offsetDateY-offsetTempY,mAlphaTempImagePaint);
             }
+
             canvas.drawText(mWatchHour, centerX - halfhourX, centerY-offsetHourY/2-offsetTempY, mTextPaint);
             canvas.drawText( mWatchDate, centerX - halfDateX, centerY+offsetHourY/2-offsetTempY, mAlphaTextPaint);
 
@@ -463,7 +464,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
                     mWatchBitmap=  BitmapFactory.decodeResource(getResources(), resid);
                     mWatchBitmap=Bitmap.createScaledBitmap(mWatchBitmap, (int) mTextPaint.getTextSize(), (int)mTextPaint.getTextSize(), false);
                 }
-                mWatchTemp=mWatchMaxTemp+" "+mWatchMinTemp;
+                mWatchTemp=mWatchMaxTemp+"º "+mWatchMinTemp+"º";
             }
         }
         private final ResultCallback<DataItemBuffer> onConnectedResultCallback = new ResultCallback<DataItemBuffer>() {
