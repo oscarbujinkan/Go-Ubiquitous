@@ -10,6 +10,7 @@ import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wearable.DataApi;
 import com.google.android.gms.wearable.MessageEvent;
@@ -34,7 +35,6 @@ public class WearListenerService extends WearableListenerService implements Goog
     public static final String START_ACTIVITY_PATH = "/forecast-wear";
     private GoogleApiClient mGoogleApiClient;
     public static final String KEY_NOTIFICATION_ID = "notification-id";
-    private AsyncTask<Void,Void,PutDataRequest> mWeareableAsyncSender;
     private ForecastWear mForecastWear;
     private static final String[] FORECAST_COLUMNS = {
             WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
@@ -82,33 +82,18 @@ public class WearListenerService extends WearableListenerService implements Goog
 
     }
     public void sendForecastToWear(){
-
-        if(mWeareableAsyncSender!=null){
-            mWeareableAsyncSender.cancel(true);
-        }
-
-        mForecastWear=getWeather();
+         mForecastWear=getWeather();
         if(mForecastWear!=null) {
-            final byte [] message;
-            try {
-                message = serialize(new byte[][]{mForecastWear.max_temp.getBytes(),mForecastWear.min_temp.getBytes(),String.valueOf(mForecastWear.weather_id).getBytes()});
+            PutDataMapRequest putDataMapReq = PutDataMapRequest.create(START_ACTIVITY_PATH);
+            putDataMapReq.getDataMap().putString("max", mForecastWear.max_temp);
+            putDataMapReq.getDataMap().putString("min", mForecastWear.min_temp);
+            putDataMapReq.getDataMap().putInt("id", mForecastWear.weather_id);
 
-                if(mGoogleApiClient.isConnected()) {
-                    NodeApi.GetConnectedNodesResult nodesList =
-                            Wearable.NodeApi.getConnectedNodes(mGoogleApiClient).await();
 
-                    for(Node node : nodesList.getNodes()){
-                        Wearable.MessageApi.sendMessage(
-                                mGoogleApiClient,
-                                node.getId(),
-                                START_ACTIVITY_PATH,
-                                message).await();
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+            Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
         }
+
 
     }
 
