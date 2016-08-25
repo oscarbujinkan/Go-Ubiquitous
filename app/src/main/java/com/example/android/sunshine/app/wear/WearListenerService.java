@@ -34,7 +34,6 @@ public class WearListenerService extends WearableListenerService implements Goog
         ResultCallback<DataApi.DeleteDataItemsResult> {
     public static final String START_ACTIVITY_PATH = "/forecast-wear";
     private GoogleApiClient mGoogleApiClient;
-    public static final String KEY_NOTIFICATION_ID = "notification-id";
     private ForecastWear mForecastWear;
     private static final String[] FORECAST_COLUMNS = {
             WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
@@ -114,11 +113,5 @@ public class WearListenerService extends WearableListenerService implements Goog
         }
 
         return null;
-    }
-    private byte[] serialize(Object obj) throws IOException {
-        ByteArrayOutputStream b = new ByteArrayOutputStream();
-        ObjectOutputStream o = new ObjectOutputStream(b);
-        o.writeObject(obj);
-        return b.toByteArray();
     }
 }

@@ -32,10 +32,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.WindowInsets;
 
@@ -49,10 +47,6 @@ import com.google.android.gms.wearable.DataItem;
 import com.google.android.gms.wearable.DataItemBuffer;
 import com.google.android.gms.wearable.DataMap;
 import com.google.android.gms.wearable.DataMapItem;
-import com.google.android.gms.wearable.MessageApi;
-import com.google.android.gms.wearable.MessageEvent;
-import com.google.android.gms.wearable.Node;
-import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
 
 import java.io.ByteArrayInputStream;
@@ -438,11 +432,6 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
         @Override
         public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
-        }
-        public Object deserialize(byte[] bytes) throws IOException, ClassNotFoundException {
-            ByteArrayInputStream b = new ByteArrayInputStream(bytes);
-            ObjectInputStream o = new ObjectInputStream(b);
-            return o.readObject();
         }
         private final DataApi.DataListener onDataChangedListener = new DataApi.DataListener() {
             @Override
